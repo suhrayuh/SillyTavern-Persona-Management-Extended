@@ -3,6 +3,9 @@ import {
   getOrCreatePersonaDescriptor,
   user_avatar,
 } from "/scripts/personas.js";
+import { extension_settings } from "/scripts/extensions.js";
+
+const SETTINGS_KEY = "personaManagementExtended";
 
 /**
  * @typedef {object} PmeItem
@@ -356,4 +359,73 @@ export function moveItemInGroup(groupId, itemId, delta) {
  */
 export function getCurrentPersonaMeta() {
   return { avatarId: user_avatar };
+}
+
+// ---------------------------------------------------------------------------
+// Creator settings (global, not per-persona)
+// ---------------------------------------------------------------------------
+
+const DEFAULT_CREATOR_PROMPT = `You are a persona creation assistant. Create a detailed user persona that would be a compelling match for the character described below.
+
+Character Name: {{char}}
+Character Description:
+{{description}}
+
+{{#if personaName}}The persona is already named {{personaName}}. Use this name.{{/if}}
+
+Create a user persona with:
+- A name that fits the setting{{#unless personaName}} (pick a name){{/unless}}
+- A detailed physical description
+- A personality that creates interesting dynamics with the character
+- A backstory that explains how they might encounter this character
+- Speech patterns and mannerisms
+
+Write the persona description in second person, addressing {{char}}'s partner/companion.
+
+Return your response as a JSON code block with exactly two fields:
+\`\`\`json
+{
+  "name": "Persona Name Here",
+  "description": "Full persona description here in second person..."
+}
+\`\`\`
+Do not include any text before or after the JSON code block.`;
+
+const DEFAULT_CREATOR_SETTINGS = Object.freeze({
+  prompts: [{ id: "default", name: "Default", prompt: DEFAULT_CREATOR_PROMPT }],
+  activePromptId: "default",
+  lastProfileId: null,
+  maxTokens: 2048,
+  namePoolEnabled: false,
+  linkToCharacter: false,
+});
+
+/**
+ * Returns (and initializes) global creator settings.
+ */
+export function getCreatorSettings() {
+  extension_settings[SETTINGS_KEY] ??= {};
+  const ext = extension_settings[SETTINGS_KEY];
+  ext.creator ??= {};
+  if (typeof ext.creator !== "object") ext.creator = {};
+  ext.creator.prompts ??= [...DEFAULT_CREATOR_SETTINGS.prompts];
+  ext.creator.activePromptId ??= DEFAULT_CREATOR_SETTINGS.activePromptId;
+  ext.creator.lastProfileId ??= DEFAULT_CREATOR_SETTINGS.lastProfileId;
+  ext.creator.maxTokens ??= DEFAULT_CREATOR_SETTINGS.maxTokens;
+  ext.creator.namePoolEnabled ??= DEFAULT_CREATOR_SETTINGS.namePoolEnabled;
+  ext.creator.linkToCharacter ??= DEFAULT_CREATOR_SETTINGS.linkToCharacter;
+  return ext.creator;
+}
+
+/**
+ * @param {Record<string, any>} patch
+ */
+export function patchCreatorSettings(patch) {
+  const current = getCreatorSettings();
+  Object.assign(current, patch);
+  saveSettingsDebounced();
+}
+
+export function getCreatorDefaultPrompt() {
+  return DEFAULT_CREATOR_PROMPT;
 }

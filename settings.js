@@ -7,12 +7,13 @@ import { saveSettingsDebounced } from "/script.js";
 import {
   extension_settings,
   renderExtensionTemplateAsync,
-} from "../../../extensions.js";
+} from "/scripts/extensions.js";
 import { accountStorage } from "/scripts/util/AccountStorage.js";
-import { callGenericPopup, POPUP_TYPE } from "../../../popup.js";
+import { callGenericPopup, POPUP_TYPE } from "/scripts/popup.js";
 import { power_user } from "/scripts/power-user.js";
 
 import { PME } from "./src/core/constants.js";
+import { createPersonaCreatorCard } from "./src/ui/components/personaCreator.js";
 
 /**
  * Extension settings key
@@ -275,6 +276,14 @@ export async function initSettingsUI() {
       .on("click", "#pme-clear-all-data", async function () {
         await clearAllExtensionData();
       });
+
+    // Persona Creator card
+    const creatorSlot = document.getElementById("pme-persona-creator-slot");
+    if (creatorSlot) {
+      const creatorCard = createPersonaCreatorCard();
+      creatorSlot.appendChild(creatorCard.el);
+      creatorCard.mount();
+    }
   } catch (err) {
     console.error("[PME]: Settings UI initialization error:", err);
   }

@@ -32,7 +32,9 @@ function init() {
 
   // 1) App ready hook (safe point where ST UI exists)
   eventSource.on(event_types.APP_READY, () => {
-    setTimeout(() => tryInitUI(), 100);
+    setTimeout(() => {
+      tryInitUI();
+    }, 100);
   });
 
   // 2) When Persona Management drawer is opened
