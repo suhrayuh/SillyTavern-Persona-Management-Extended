@@ -10,6 +10,7 @@ import {
 } from "./components/personaLinksGlobalSettings.js";
 import { createAdditionalDescriptionsCard } from "./components/additionalDescriptions.js";
 import { createSettingsCard } from "./components/settingsCard.js";
+import { createPronounsCard } from "./components/pronounsCard.js";
 import { createUiBus, UI_EVENTS } from "./uiBus.js";
 
 function getPersonaName() {
@@ -35,6 +36,7 @@ export function createAdvancedApp(rootEl) {
   });
 
   const linksCard = createPersonaLinksGlobalSettingsCard({ bus });
+  const pronounsCard = createPronounsCard({ bus });
   const additionalCard = createAdditionalDescriptionsCard();
   const settingsCard = createSettingsCard();
 
@@ -46,6 +48,7 @@ export function createAdvancedApp(rootEl) {
   // Wire updates via bus (decoupled)
   bus.on(UI_EVENTS.PERSONA_CHANGED, () => {
     currentPersonaPanel.update();
+    pronounsCard.update();
     linksCard.update();
     additionalCard.update();
     settingsCard.update();
@@ -65,12 +68,14 @@ export function createAdvancedApp(rootEl) {
 
     left.appendChild(personaList.el);
     right.appendChild(currentPersonaPanel.el);
+    right.appendChild(pronounsCard.el);
     right.appendChild(linksCard.el);
     right.appendChild(additionalCard.el);
     right.appendChild(settingsCard.el);
 
     personaList.mount({ autoScroll });
     currentPersonaPanel.mount();
+    pronounsCard.mount();
     linksCard.mount();
     additionalCard.mount();
     settingsCard.mount();
@@ -83,6 +88,7 @@ export function createAdvancedApp(rootEl) {
       bus.emit(UI_EVENTS.UI_OPEN, { autoScroll });
       personaList.update({ invalidateCache: false, autoScroll });
       currentPersonaPanel.update();
+      pronounsCard.update();
       linksCard.update();
       additionalCard.update();
       settingsCard.update();
@@ -94,6 +100,7 @@ export function createAdvancedApp(rootEl) {
     refreshAll() {
       if (!mounted) return;
       currentPersonaPanel.update();
+      pronounsCard.update();
       linksCard.update();
       additionalCard.update();
       settingsCard.update();

@@ -721,3 +721,60 @@
   }
 }
 
+/* Pronouns card */
+.pme-pronouns-body {
+  padding: 8px 0 0;
+}
+
+.pme-pronouns-presets {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.pme-pronouns-presets .pme-preset-btn {
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.pme-pronouns-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pme-pronouns-field {
+  flex: 1 1 45%;
+  min-width: 120px;
+}
+
+.pme-pronouns-field-label {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.pme-pronouns-field-label label {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin: 0;
+}
+
+.pme-pronoun-info {
+  opacity: 0.5;
+  cursor: help;
+  font-size: 0.75rem;
+}
+
+.pme-pronouns-field input {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .pme-pronouns-field {
+    flex: 1 1 100%;
+  }
+}
+
