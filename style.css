@@ -872,6 +872,13 @@
   cursor: pointer;
 }
 
+.pme-creator-extra-input {
+  width: 100%;
+  min-height: 48px;
+  resize: vertical;
+  font-size: 0.9rem;
+}
+
 .pme-creator-reset-btn {
   align-self: flex-start;
   font-size: 0.8rem;

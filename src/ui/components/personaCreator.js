@@ -23,10 +23,25 @@ import {
 
 function substituteMacros(template, personaName) {
   const char = characters[Number(this_chid)];
-  return template
-    .replace(/\{\{char\}\}/gi, char?.name ?? "")
-    .replace(/\{\{description\}\}/gi, char?.description ?? "")
-    .replace(/\{\{personaName\}\}/gi, personaName ?? "");
+  const vars = {
+    char: char?.name ?? "",
+    description: char?.description ?? "",
+    personaName: personaName ?? "",
+  };
+  let result = template;
+  // Process {{#if var}}...{{/if}}
+  result = result.replace(/\{\{#if (\w+)\}\}([\s\S]*?)\{\{\/if\}\}/gi, (_match, key, content) => {
+    return vars[key] ? content : "";
+  });
+  // Process {{#unless var}}...{{/unless}}
+  result = result.replace(/\{\{#unless (\w+)\}\}([\s\S]*?)\{\{\/unless\}\}/gi, (_match, key, content) => {
+    return vars[key] ? "" : content;
+  });
+  // Process simple {{var}} replacements
+  result = result.replace(/\{\{char\}\}/gi, vars.char);
+  result = result.replace(/\{\{description\}\}/gi, vars.description);
+  result = result.replace(/\{\{personaName\}\}/gi, vars.personaName);
+  return result;
 }
 
 function extractPersonaName(text) {
@@ -156,6 +171,16 @@ export function createPersonaCreatorCard() {
   const nameCarousel = el("div", "pme-creator-name-carousel displayNone");
   namePoolSection.appendChild(nameCarousel);
   body.appendChild(namePoolSection);
+
+  // --- Additional Instructions ---
+  body.appendChild(el("label", "", "Additional Instructions"));
+  const extraHint = el("span", "pme-creator-hint", " (optional — appended to prompt)");
+  body.lastChild.appendChild(extraHint);
+  const extraInput = document.createElement("textarea");
+  extraInput.className = "text_pole pme-creator-extra-input";
+  extraInput.rows = 2;
+  extraInput.placeholder = "e.g., she is a cat demi-human";
+  body.appendChild(extraInput);
 
   // --- Image ---
   body.appendChild(el("label", "", "Visual Reference"));
@@ -467,6 +492,12 @@ export function createPersonaCreatorCard() {
     try {
       let prompt = substituteMacros(selectedPrompt.prompt, nameInput.value.trim());
 
+      // Auto-inject additional instructions
+      const extraInstructions = extraInput.value.trim();
+      if (extraInstructions) {
+        prompt += `\n\n${extraInstructions}`;
+      }
+
       // Auto-inject name pool exclusion
       const excludedNames = getNamePool();
       if (excludedNames.length) {
@@ -527,6 +558,15 @@ export function createPersonaCreatorCard() {
     }
   }
 
+  function clearInputs() {
+    extraInput.value = "";
+    imageDataUrl = null;
+    imgInput.value = "";
+    imgPreview.src = "";
+    imgPreview.classList.add("displayNone");
+    imgClear.classList.add("displayNone");
+  }
+
   saveBtn.addEventListener("click", async () => {
     if (!generatedName || !generatedDescription) return;
     try {
@@ -536,6 +576,7 @@ export function createPersonaCreatorCard() {
         : `Persona "${generatedName}" created`;
       toastr.success(msg);
       hideResult();
+      clearInputs();
       generatedName = null;
       generatedDescription = null;
     } catch (e) {
@@ -552,6 +593,7 @@ export function createPersonaCreatorCard() {
 
   discardBtn.addEventListener("click", () => {
     hideResult();
+    clearInputs();
     generatedName = null;
     generatedDescription = null;
   });
