@@ -280,6 +280,7 @@ export async function initSettingsUI() {
     // Persona Creator card
     const creatorSlot = document.getElementById("pme-persona-creator-slot");
     if (creatorSlot) {
+      creatorSlot.replaceChildren();
       const creatorCard = createPersonaCreatorCard();
       creatorSlot.appendChild(creatorCard.el);
       creatorCard.mount();
