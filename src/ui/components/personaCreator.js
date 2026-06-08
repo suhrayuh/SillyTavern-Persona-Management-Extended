@@ -585,10 +585,11 @@ export function createPersonaCreatorCard() {
     }
   });
 
-  retryBtn.addEventListener("click", () => {
+  retryBtn.addEventListener("click", async () => {
     hideResult();
     generatedName = null;
     generatedDescription = null;
+    await doGenerate();
   });
 
   discardBtn.addEventListener("click", () => {
