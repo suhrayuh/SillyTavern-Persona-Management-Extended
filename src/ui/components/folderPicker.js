@@ -135,7 +135,19 @@ export function showFolderPicker(anchorEl, personaId, bus) {
   let left = rect.right - pickerWidth;
   if (left < 8) left = 8;
   picker.style.left = `${left}px`;
+
+  // Copy theme colors from PME root (inside ST's themed area)
+  const themedEl = document.getElementById("pme_root") || document.getElementById("PersonaManagement") || document.body;
+  const themedStyle = getComputedStyle(themedEl);
+  picker.style.background = themedStyle.getPropertyValue("--SmartThemeBodyColor").trim() || "var(--SmartThemeBodyColor, #1a1a2e)";
+  picker.style.color = themedStyle.getPropertyValue("--SmartThemeFontColor").trim() || "";
+
   document.body.appendChild(picker);
+
+  // Prevent clicks inside picker from closing ST's drawer
+  picker.addEventListener("mousedown", (e) => {
+    e.stopPropagation();
+  }, true);
 
   // Close on outside click or escape
   requestAnimationFrame(() => {

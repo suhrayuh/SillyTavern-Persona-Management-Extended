@@ -594,7 +594,7 @@ export function createPersonaList({ getPowerUser, bus }) {
     }
 
     // --- Root view: folders at top (alphabetical), then unfolded personas ---
-    const foldedIds = new Set(Object.values(folderMap));
+    const foldedIds = new Set(Object.keys(folderMap));
     const unfolded = personas.filter((id) => !foldedIds.has(id));
     const sortedUnfolded = sortPersonas(unfolded, power, sortMode);
 
@@ -607,9 +607,6 @@ export function createPersonaList({ getPowerUser, bus }) {
 
     // Folders first
     for (const folder of folders) {
-      // Only show folders that have at least one valid persona
-      const validCount = folder.personaIds.filter((id) => personas.includes(id)).length;
-      if (validCount === 0 && folder.personaIds.length === 0) continue; // hide empty folders? or show them? show them for now
       listEl.appendChild(buildFolderRow(power, folder));
     }
 

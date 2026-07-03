@@ -1075,12 +1075,6 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-
-.pme-folder:hover .pme-folder-actions {
-  opacity: 0.9;
 }
 
 .pme-folder-rename-btn,
