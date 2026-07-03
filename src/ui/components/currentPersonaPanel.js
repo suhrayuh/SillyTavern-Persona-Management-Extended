@@ -259,12 +259,8 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
         bus?.emit(UI_EVENTS.PERSONA_LIST_INVALIDATED, {});
         syncFolderButtonState();
       } else {
-        // Not in a folder — show picker
+        // Not in a folder — show picker (render + button state handled by bus event via advancedApp)
         showFolderPicker(folderBtn, user_avatar, bus);
-        setTimeout(() => {
-          syncFolderButtonState();
-          bus?.emit(UI_EVENTS.PERSONA_LIST_INVALIDATED, {});
-        }, 500);
       }
     }
   );

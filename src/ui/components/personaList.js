@@ -484,10 +484,7 @@ export function createPersonaList({ getPowerUser, bus }) {
       folderAddBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         showFolderPicker(folderAddBtn, id, bus);
-        // Re-render after picker closes (delayed to catch async operations)
-        setTimeout(() => {
-          if (currentFolderId) void renderList({ autoScroll: false });
-        }, 500);
+        // Render is handled by bus event via advancedApp
       });
     }
     row.appendChild(folderAddBtn);
@@ -703,29 +700,8 @@ export function createPersonaList({ getPowerUser, bus }) {
     }
   });
 
-  // ---- Bus wiring for folder events ----
-  bus?.on?.(UI_EVENTS.FOLDER_CREATED, () => {
-    void renderList({ autoScroll: false });
-  });
-  bus?.on?.(UI_EVENTS.FOLDER_DELETED, () => {
-    if (currentFolderId) {
-      // Check if current folder still exists
-      const folders = getFolders();
-      if (!folders.find((f) => f.id === currentFolderId)) {
-        currentFolderId = null;
-        backBtn.style.display = "none";
-        folderNameInTitle.style.display = "none";
-        titleText.textContent = "Personas ";
-      }
-    }
-    void renderList({ autoScroll: false });
-  });
-  bus?.on?.(UI_EVENTS.FOLDER_CHANGED, () => {
-    void renderList({ autoScroll: false });
-  });
-  bus?.on?.(UI_EVENTS.PERSONA_FOLDER_CHANGED, () => {
-    void renderList({ autoScroll: false });
-  });
+  // Note: folder events are handled by advancedApp -> personaList.update().
+  // No need for direct bus listeners here to avoid double-renders.
 
   return {
     el: root,
