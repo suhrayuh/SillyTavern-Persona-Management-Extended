@@ -1069,6 +1069,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 18px;
 }
 
 .pme-folder-actions {
@@ -1092,7 +1093,7 @@
 
 .pme-folder-desc {
   opacity: 0.65;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1146,7 +1147,7 @@
   overflow-y: auto;
   padding: 6px;
   border-radius: 10px;
-  background: var(--SmartThemeBodyColor, #1a1a2e);
+  background: var(--SmartThemeBlurTintColor, #1a1a2e) !important;
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   display: flex;
