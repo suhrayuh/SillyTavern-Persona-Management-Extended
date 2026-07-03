@@ -965,3 +965,269 @@
   word-break: break-word;
 }
 
+/* =================================================================== */
+/* Persona Folders                                                     */
+/* =================================================================== */
+
+/* Back button in header */
+.pme-folder-back {
+  margin-right: 6px;
+}
+
+.pme-folder-title-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Create Folder button in actions row */
+.pme-create-folder-btn {
+  opacity: 0.85;
+}
+.pme-create-folder-btn:hover {
+  opacity: 1;
+}
+
+/* Folder row in root view */
+.pme-folder {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.pme-folder:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.pme-folder-drag-over {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+
+/* 2x2 avatar grid */
+.pme-folder-avatar-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(128, 128, 128, 0.1);
+}
+
+.pme-folder-avatar-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.pme-folder-avatar-mini {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pme-folder-avatar-empty {
+  /* empty slot — no avatar */
+}
+
+/* Folder meta */
+.pme-folder-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.pme-folder-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pme-folder-name {
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pme-folder-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+.pme-folder:hover .pme-folder-actions {
+  opacity: 0.9;
+}
+
+.pme-folder-rename-btn,
+.pme-folder-delete-btn {
+  height: 20px;
+  width: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  font-size: 0.75em;
+}
+
+.pme-folder-delete-btn {
+  background: rgba(255, 0, 0, 0.08);
+}
+
+.pme-folder-desc {
+  opacity: 0.65;
+  font-size: 0.85rem;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.pme-folder-count {
+  opacity: 0.55;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Persona folder-add icon (hover, top-right corner) */
+.pme-persona-folder-add {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  height: 20px;
+  width: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  font-size: 0.8em;
+}
+
+.pme-persona {
+  position: relative;
+}
+
+.pme-persona:hover .pme-persona-folder-add {
+  opacity: 0.85;
+}
+
+.pme-persona-folder-add:hover {
+  opacity: 1;
+}
+
+.pme-persona-dragging {
+  opacity: 0.4;
+}
+
+/* ---- Folder picker dropdown ---- */
+.pme-folder-picker {
+  min-width: 220px;
+  max-width: 300px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--SmartThemeBodyColor, #1a1a2e);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+
+.pme-folder-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.pme-folder-picker-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pme-folder-picker-item.is-current {
+  opacity: 0.6;
+}
+
+.pme-folder-picker-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pme-folder-picker-check {
+  opacity: 0.7;
+  font-size: 0.85em;
+}
+
+.pme-folder-picker-create {
+  font-weight: 600;
+}
+
+.pme-folder-picker-remove {
+  color: rgba(255, 100, 100, 0.9);
+}
+
+.pme-folder-picker-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+/* ---- Create folder dialog ---- */
+.pme-create-folder-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pme-create-folder-hint {
+  opacity: 0.8;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.pme-create-folder-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+.pme-create-folder-dialog input[type="text"],
+.pme-create-folder-dialog textarea {
+  width: 100%;
+  margin-bottom: 8px;
+}
+

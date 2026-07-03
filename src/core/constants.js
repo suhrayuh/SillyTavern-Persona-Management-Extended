@@ -4,6 +4,7 @@ export const PME = {
   storage: {
     advancedModeKey: "pme_advanced_mode",
     personaSortKey: "pme_persona_sort",
+    folderNavKey: "pme_folder_nav",
   },
   dom: {
     advancedToggleId: "pme_advanced_mode_toggle",

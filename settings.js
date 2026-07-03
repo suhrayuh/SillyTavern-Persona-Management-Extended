@@ -97,7 +97,7 @@ async function clearAllExtensionData() {
       }
     }
 
-    // Reset extension settings to defaults
+    // Reset extension settings to defaults (this also clears folders since they live under extension_settings)
     extension_settings[SETTINGS_KEY] = { ...defaultSettings };
 
     // Reset local UI prefs

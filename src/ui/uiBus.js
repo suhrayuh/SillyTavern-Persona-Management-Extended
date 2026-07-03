@@ -13,6 +13,12 @@ export const UI_EVENTS = Object.freeze({
   PERSONA_LIST_INVALIDATED: "persona:list_invalidated",
 
   LINKS_TOGGLED: "links:toggled",
+
+  FOLDER_CREATED: "folder:created",
+  FOLDER_DELETED: "folder:deleted",
+  FOLDER_CHANGED: "folder:changed",
+  PERSONA_FOLDER_CHANGED: "persona:folder_changed",
+  FOLDER_NAV_CHANGED: "folder:nav_changed",
 });
 
 /**

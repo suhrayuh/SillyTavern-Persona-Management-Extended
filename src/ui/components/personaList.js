@@ -8,6 +8,19 @@ import { getThumbnailUrl } from "/script.js";
 import { getPersonaSortMode, setPersonaSortMode } from "../../core/mode.js";
 import { el } from "./dom.js";
 import { UI_EVENTS } from "../uiBus.js";
+import {
+  getFolders,
+  getPersonaFolder,
+  getPersonaFolderMap,
+  removePersonaFromFolder,
+  addPersonaToFolder,
+} from "../../store/folderStore.js";
+import {
+  showFolderPicker,
+  showCreateFolderDialog,
+  showRenameFolderDialog,
+  showDeleteFolderDialog,
+} from "./folderPicker.js";
 
 /**
  * @param {string} avatarId
@@ -93,6 +106,60 @@ function hasLorebook(power_user, avatarId) {
   return !!String(raw ?? "").trim();
 }
 
+/**
+ * Sort an array of avatar IDs by the active sort mode.
+ * @param {string[]} ids
+ * @param {any} power
+ * @param {string} sortMode
+ * @returns {string[]}
+ */
+function sortPersonas(ids, power, sortMode) {
+  return [...ids].sort((a, b) => {
+    switch (sortMode) {
+      case "name_asc":
+        return getPersonaName(power, a).localeCompare(getPersonaName(power, b));
+      case "name_desc":
+        return getPersonaName(power, b).localeCompare(getPersonaName(power, a));
+      case "id_asc":
+        return String(a).localeCompare(String(b));
+      case "id_desc":
+        return String(b).localeCompare(String(a));
+      case "desc_len_asc": {
+        const d = getDescriptionLength(power, a) - getDescriptionLength(power, b);
+        if (d !== 0) return d;
+        return getPersonaName(power, a).localeCompare(getPersonaName(power, b));
+      }
+      case "desc_len_desc": {
+        const d = getDescriptionLength(power, b) - getDescriptionLength(power, a);
+        if (d !== 0) return d;
+        return getPersonaName(power, a).localeCompare(getPersonaName(power, b));
+      }
+      case "connections_asc": {
+        const d = getConnectionsCount(power, a) - getConnectionsCount(power, b);
+        if (d !== 0) return d;
+        return getPersonaName(power, a).localeCompare(getPersonaName(power, b));
+      }
+      case "connections_desc": {
+        const d = getConnectionsCount(power, b) - getConnectionsCount(power, a);
+        if (d !== 0) return d;
+        return getPersonaName(power, a).localeCompare(getPersonaName(power, b));
+      }
+      case "lorebook_first": {
+        const d = Number(hasLorebook(power, b)) - Number(hasLorebook(power, a));
+        if (d !== 0) return d;
+        return getPersonaName(power, a).localeCompare(getPersonaName(power, b));
+      }
+      case "lorebook_last": {
+        const d = Number(hasLorebook(power, a)) - Number(hasLorebook(power, b));
+        if (d !== 0) return d;
+        return getPersonaName(power, a).localeCompare(getPersonaName(power, b));
+      }
+      default:
+        return 0;
+    }
+  });
+}
+
 export function createPersonaList({ getPowerUser, bus }) {
   /** @type {string[]|null} */
   let personasCache = null;
@@ -104,13 +171,45 @@ export function createPersonaList({ getPowerUser, bus }) {
   let refreshTimer = /** @type {number|undefined} */ (undefined);
   let autoScrollNext = false;
 
+  // --- Folder navigation state ---
+  /** @type {string|null} current folder view (null = root) */
+  let currentFolderId = null;
+
   const root = el("div", "pme-card pme-personas");
 
+  // ---- Header (title + actions) ----
   const header = el("div", "pme-card-title-row");
   const titleWrap = el("div", "pme-card-title");
-  titleWrap.textContent = "Personas ";
+
+  // Back button (hidden on root view)
+  const backBtn = document.createElement("button");
+  backBtn.type = "button";
+  backBtn.className = "menu_button menu_button_icon pme-icon-btn pme-folder-back";
+  backBtn.title = "Back to all personas";
+  backBtn.innerHTML = '<i class="fa-solid fa-arrow-left"></i>';
+  backBtn.style.display = "none";
+  backBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    currentFolderId = null;
+    backBtn.style.display = "none";
+    folderNameInTitle.style.display = "none";
+    titleWrap.querySelector(".pme-card-title-text").textContent = "Personas ";
+    bus?.emit?.(UI_EVENTS.FOLDER_NAV_CHANGED, { folderId: null });
+    void renderList({ autoScroll: false });
+  });
+
+  const titleText = el("span", "pme-card-title-text", "Personas ");
+  titleWrap.appendChild(titleText);
   const countEl = el("span", "pme-count", "(0)");
   titleWrap.appendChild(countEl);
+
+  // Folder name shown in title when inside a folder
+  const folderNameInTitle = el("span", "pme-folder-title-name", "");
+  folderNameInTitle.style.display = "none";
+  titleWrap.appendChild(folderNameInTitle);
+
+  // Prepend back button
+  titleWrap.insertBefore(backBtn, titleText);
   header.appendChild(titleWrap);
 
   const actions = el("div", "pme-actions");
@@ -118,6 +217,22 @@ export function createPersonaList({ getPowerUser, bus }) {
   let nativeCreateRestore = /** @type {{ parent: HTMLElement, nextSibling: ChildNode|null } | null} */ (
     null
   );
+
+  // Create Folder button
+  const createFolderBtn = document.createElement("button");
+  createFolderBtn.type = "button";
+  createFolderBtn.className = "menu_button menu_button_icon pme-icon-btn pme-create-folder-btn";
+  createFolderBtn.title = "Create folder";
+  createFolderBtn.innerHTML = '<i class="fa-solid fa-folder-plus"></i>';
+  createFolderBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const folder = await showCreateFolderDialog(bus);
+    if (folder) {
+      void renderList({ autoScroll: false });
+    }
+  });
+  actions.appendChild(createFolderBtn);
 
   const refreshBtn = el("button", "menu_button menu_button_icon pme-icon-btn");
   refreshBtn.type = "button";
@@ -131,7 +246,6 @@ export function createPersonaList({ getPowerUser, bus }) {
     const btn = document.getElementById("create_dummy_persona");
     if (!(btn instanceof HTMLElement)) return;
 
-    // Cache original location once so we can restore it on destroy().
     if (!nativeCreateRestore) {
       const parent = btn.parentElement;
       if (!(parent instanceof HTMLElement)) return;
@@ -142,18 +256,14 @@ export function createPersonaList({ getPowerUser, bus }) {
     }
 
     nativeCreateBtn = btn;
-
-    // Put Create button to the left of refresh button.
-    actions.insertBefore(btn, refreshBtn);
+    // Put Create button to the left of Create Folder button.
+    actions.insertBefore(btn, createFolderBtn);
   }
 
   function restoreNativeCreateButton() {
     if (!nativeCreateBtn || !nativeCreateRestore) return;
     const { parent, nextSibling } = nativeCreateRestore;
-
-    // If it's already restored, do nothing.
     if (nativeCreateBtn.parentElement === parent) return;
-
     try {
       if (nextSibling && nextSibling.parentNode === parent) {
         parent.insertBefore(nativeCreateBtn, nextSibling);
@@ -161,10 +271,11 @@ export function createPersonaList({ getPowerUser, bus }) {
         parent.appendChild(nativeCreateBtn);
       }
     } catch {
-      // If restore fails for any reason, don't break UI teardown.
+      // ignore
     }
   }
 
+  // ---- Controls (search + sort) ----
   const controls = el("div", "pme-persona-controls");
   const search = el("input", "text_pole pme-persona-search");
   search.type = "search";
@@ -206,137 +317,310 @@ export function createPersonaList({ getPowerUser, bus }) {
     return personasLoadPromise;
   }
 
+  // ---- Folder row builder ----
+  /**
+   * @param {any} power
+   * @param {{id:string, name:string, description:string, personaIds:string[]}} folder
+   * @returns {HTMLElement}
+   */
+  function buildFolderRow(power, folder) {
+    const row = el("div", "pme-folder");
+    row.dataset.folderId = folder.id;
+    row.draggable = true;
+
+    // 2x2 avatar grid
+    const avatarGrid = el("div", "pme-folder-avatar-grid");
+    const preview = folder.personaIds.slice(0, 4);
+    for (let i = 0; i < 4; i++) {
+      const slot = el("div", "pme-folder-avatar-slot");
+      if (preview[i]) {
+        const img = document.createElement("img");
+        img.className = "pme-folder-avatar-mini";
+        img.alt = "";
+        img.loading = "lazy";
+        img.src = getThumbnailUrl("persona", preview[i]);
+        slot.appendChild(img);
+      } else {
+        slot.classList.add("pme-folder-avatar-empty");
+      }
+      avatarGrid.appendChild(slot);
+    }
+    row.appendChild(avatarGrid);
+
+    // Meta
+    const meta = el("div", "pme-folder-meta");
+    const nameRow = el("div", "pme-folder-name-row");
+    nameRow.appendChild(el("div", "pme-folder-name", folder.name));
+
+    // Folder action icons (rename, delete)
+    const folderActions = el("div", "pme-folder-actions");
+    const renameBtn = document.createElement("button");
+    renameBtn.type = "button";
+    renameBtn.className = "menu_button menu_button_icon pme-icon-btn pme-folder-rename-btn";
+    renameBtn.title = "Rename folder";
+    renameBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+    renameBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const newName = await showRenameFolderDialog(folder.id, folder.name, bus);
+      if (newName) void renderList({ autoScroll: false });
+    });
+    folderActions.appendChild(renameBtn);
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "menu_button menu_button_icon pme-icon-btn pme-folder-delete-btn";
+    deleteBtn.title = "Delete folder";
+    deleteBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+    deleteBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const deleted = await showDeleteFolderDialog(folder.id, folder.name, bus);
+      if (deleted) void renderList({ autoScroll: false });
+    });
+    folderActions.appendChild(deleteBtn);
+
+    nameRow.appendChild(folderActions);
+    meta.appendChild(nameRow);
+
+    // Folder description
+    const desc = String(folder.description ?? "").trim();
+    if (desc) {
+      meta.appendChild(el("div", "pme-folder-desc", desc));
+    }
+
+    // Count badge
+    meta.appendChild(el("div", "pme-folder-count", `${folder.personaIds.length} persona${folder.personaIds.length === 1 ? "" : "s"}`));
+    row.appendChild(meta);
+
+    // Click → navigate into folder
+    row.addEventListener("click", (e) => {
+      // Don't navigate if clicking action buttons
+      if (e.target instanceof HTMLElement && e.target.closest(".pme-folder-actions")) return;
+      currentFolderId = folder.id;
+      backBtn.style.display = "";
+      folderNameInTitle.style.display = "";
+      folderNameInTitle.textContent = ` › ${folder.name}`;
+      titleText.textContent = "";
+      bus?.emit?.(UI_EVENTS.FOLDER_NAV_CHANGED, { folderId: folder.id });
+      void renderList({ autoScroll: true });
+    });
+
+    // Drag-and-drop: persona dropped onto folder
+    row.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      row.classList.add("pme-folder-drag-over");
+    });
+    row.addEventListener("dragleave", () => {
+      row.classList.remove("pme-folder-drag-over");
+    });
+    row.addEventListener("drop", (e) => {
+      e.preventDefault();
+      row.classList.remove("pme-folder-drag-over");
+      const personaId = e.dataTransfer?.getData("text/pme-persona-id");
+      if (!personaId) return;
+      addPersonaToFolder(folder.id, personaId);
+      bus?.emit?.(UI_EVENTS.PERSONA_FOLDER_CHANGED, { personaId, folderId: folder.id });
+      void renderList({ autoScroll: false });
+    });
+
+    return row;
+  }
+
+  // ---- Persona row builder ----
+  /**
+   * @param {any} power
+   * @param {string} id
+   * @param {{inFolder: boolean}} [opts]
+   * @returns {HTMLElement}
+   */
+  function buildPersonaRow(power, id, opts = {}) {
+    const { inFolder = false } = opts;
+    const row = el("div", "pme-persona");
+    row.dataset.personaId = id;
+    if (id === user_avatar) row.classList.add("is_active");
+    row.draggable = true;
+
+    const img = document.createElement("img");
+    img.className = "pme-persona-avatar";
+    img.alt = "";
+    img.loading = "lazy";
+    img.src = getThumbnailUrl("persona", id);
+
+    const meta = el("div", "pme-persona-meta");
+    const nameRow = el("div", "pme-persona-name-row");
+    nameRow.appendChild(
+      el("div", "pme-persona-name", getPersonaName(power, id) || "[Unnamed Persona]")
+    );
+    const rightMeta = el("div", "pme-persona-badges");
+    const title = getPersonaTitle(power, id);
+    rightMeta.appendChild(el("div", "pme-persona-title", title || ""));
+    if (hasLorebook(power, id)) {
+      rightMeta.appendChild(el("div", "pme-persona-lorebook", "Lorebook"));
+    }
+    nameRow.appendChild(rightMeta);
+    meta.appendChild(nameRow);
+
+    const preview = getPersonaDescriptionPreview(power, id);
+    if (preview) meta.appendChild(el("div", "pme-persona-desc", preview));
+
+    row.appendChild(img);
+    row.appendChild(meta);
+
+    // Hover folder-add icon (top-right corner of row)
+    const folderAddBtn = document.createElement("button");
+    folderAddBtn.type = "button";
+    folderAddBtn.className = "menu_button menu_button_icon pme-icon-btn pme-persona-folder-add";
+    if (inFolder) {
+      folderAddBtn.title = "Remove from folder";
+      folderAddBtn.innerHTML = '<i class="fa-solid fa-folder-minus"></i>';
+      folderAddBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removePersonaFromFolder(id);
+        bus?.emit?.(UI_EVENTS.PERSONA_FOLDER_CHANGED, { personaId: id, folderId: null });
+        void renderList({ autoScroll: false });
+      });
+    } else {
+      folderAddBtn.title = "Add to folder";
+      folderAddBtn.innerHTML = '<i class="fa-solid fa-folder-plus"></i>';
+      folderAddBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showFolderPicker(folderAddBtn, id, bus);
+        // Re-render after picker closes (delayed to catch async operations)
+        setTimeout(() => {
+          if (currentFolderId) void renderList({ autoScroll: false });
+        }, 500);
+      });
+    }
+    row.appendChild(folderAddBtn);
+
+    // Drag persona
+    row.addEventListener("dragstart", (e) => {
+      e.dataTransfer?.setData("text/pme-persona-id", id);
+      row.classList.add("pme-persona-dragging");
+    });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("pme-persona-dragging");
+    });
+
+    return row;
+  }
+
+  // ---- Main render ----
   async function renderList({ autoScroll = false } = {}) {
     const preserveScroll = scrollTop;
     const power = getPowerUser();
     const personas = await loadPersonas();
-    const q = String(query ?? "")
-      .trim()
-      .toLowerCase();
+    const q = String(query ?? "").trim().toLowerCase();
 
-    const filtered = q
-      ? personas.filter((id) => {
-          const name = getPersonaName(power, id).toLowerCase();
-          const desc = getPersonaDescriptionPreview(power, id).toLowerCase();
-          return (
-            name.includes(q) ||
-            desc.includes(q) ||
-            String(id).toLowerCase().includes(q)
-          );
-        })
-      : personas;
+    // --- Search: flat results (ignore folders) ---
+    if (q) {
+      const filtered = personas.filter((id) => {
+        const name = getPersonaName(power, id).toLowerCase();
+        const desc = getPersonaDescriptionPreview(power, id).toLowerCase();
+        return (
+          name.includes(q) ||
+          desc.includes(q) ||
+          String(id).toLowerCase().includes(q)
+        );
+      });
+      const sortMode = getPersonaSortMode();
+      const sorted = sortPersonas(filtered, power, sortMode);
 
-    const sortMode = getPersonaSortMode();
-    const sorted = [...filtered].sort((a, b) => {
-      switch (sortMode) {
-        case "name_asc":
-          return getPersonaName(power, a).localeCompare(
-            getPersonaName(power, b)
-          );
-        case "name_desc":
-          return getPersonaName(power, b).localeCompare(
-            getPersonaName(power, a)
-          );
-        case "id_asc":
-          return String(a).localeCompare(String(b));
-        case "id_desc":
-          return String(b).localeCompare(String(a));
-        case "desc_len_asc": {
-          const d =
-            getDescriptionLength(power, a) - getDescriptionLength(power, b);
-          if (d !== 0) return d;
-          return getPersonaName(power, a).localeCompare(
-            getPersonaName(power, b)
-          );
-        }
-        case "desc_len_desc": {
-          const d =
-            getDescriptionLength(power, b) - getDescriptionLength(power, a);
-          if (d !== 0) return d;
-          return getPersonaName(power, a).localeCompare(
-            getPersonaName(power, b)
-          );
-        }
-        case "connections_asc": {
-          const d =
-            getConnectionsCount(power, a) - getConnectionsCount(power, b);
-          if (d !== 0) return d;
-          return getPersonaName(power, a).localeCompare(
-            getPersonaName(power, b)
-          );
-        }
-        case "connections_desc": {
-          const d =
-            getConnectionsCount(power, b) - getConnectionsCount(power, a);
-          if (d !== 0) return d;
-          return getPersonaName(power, a).localeCompare(
-            getPersonaName(power, b)
-          );
-        }
-        case "lorebook_first": {
-          const d =
-            Number(hasLorebook(power, b)) - Number(hasLorebook(power, a));
-          if (d !== 0) return d;
-          return getPersonaName(power, a).localeCompare(
-            getPersonaName(power, b)
-          );
-        }
-        case "lorebook_last": {
-          const d =
-            Number(hasLorebook(power, a)) - Number(hasLorebook(power, b));
-          if (d !== 0) return d;
-          return getPersonaName(power, a).localeCompare(
-            getPersonaName(power, b)
-          );
-        }
-        default:
-          return 0;
+      listEl.innerHTML = "";
+      countEl.textContent = `(${sorted.length})`;
+      if (!sorted.length) {
+        listEl.appendChild(el("div", "text_muted", "No personas found."));
+        return;
       }
-    });
 
-    listEl.innerHTML = "";
-    if (!sorted.length) {
-      countEl.textContent = "(0)";
-      listEl.appendChild(el("div", "text_muted", "No personas found."));
+      // Hide back button, show "Personas" title
+      backBtn.style.display = "none";
+      folderNameInTitle.style.display = "none";
+      titleText.textContent = "Personas ";
+
+      for (const id of sorted) {
+        listEl.appendChild(buildPersonaRow(power, id));
+      }
+
+      listEl.scrollTop = preserveScroll;
+      scrollTop = preserveScroll;
       return;
     }
 
-    countEl.textContent = `(${sorted.length})`;
-    for (const id of sorted) {
-      const row = el("div", "pme-persona");
-      row.dataset.personaId = id;
-      if (id === user_avatar) row.classList.add("is_active");
+    // --- No search: folder nav view ---
+    const sortMode = getPersonaSortMode();
+    const folderMap = getPersonaFolderMap();
+    const folders = [...getFolders()].sort((a, b) => a.name.localeCompare(b.name));
 
-      const img = document.createElement("img");
-      img.className = "pme-persona-avatar";
-      img.alt = "";
-      img.loading = "lazy";
-      img.src = getThumbnailUrl("persona", id);
-
-      const meta = el("div", "pme-persona-meta");
-      const nameRow = el("div", "pme-persona-name-row");
-      nameRow.appendChild(
-        el(
-          "div",
-          "pme-persona-name",
-          getPersonaName(power, id) || "[Unnamed Persona]"
-        )
-      );
-      const rightMeta = el("div", "pme-persona-badges");
-      const title = getPersonaTitle(power, id);
-      rightMeta.appendChild(el("div", "pme-persona-title", title || ""));
-      if (hasLorebook(power, id)) {
-        rightMeta.appendChild(el("div", "pme-persona-lorebook", "Lorebook"));
+    // --- Inside a folder: only show that folder's personas ---
+    if (currentFolderId) {
+      const folder = folders.find((f) => f.id === currentFolderId);
+      if (!folder) {
+        // Folder was deleted, go back to root
+        currentFolderId = null;
+        backBtn.style.display = "none";
+        folderNameInTitle.style.display = "none";
+        titleText.textContent = "Personas ";
+        void renderList({ autoScroll });
+        return;
       }
-      nameRow.appendChild(rightMeta);
-      meta.appendChild(nameRow);
 
-      const preview = getPersonaDescriptionPreview(power, id);
-      if (preview) meta.appendChild(el("div", "pme-persona-desc", preview));
+      // Filter to only persona IDs that actually exist
+      const validIds = folder.personaIds.filter((id) => personas.includes(id));
+      const sorted = sortPersonas(validIds, power, sortMode);
 
-      row.appendChild(img);
-      row.appendChild(meta);
-      listEl.appendChild(row);
+      listEl.innerHTML = "";
+      countEl.textContent = `(${sorted.length})`;
+
+      // Update title
+      backBtn.style.display = "";
+      folderNameInTitle.style.display = "";
+      folderNameInTitle.textContent = ` › ${folder.name}`;
+      titleText.textContent = "";
+
+      if (!sorted.length) {
+        listEl.appendChild(el("div", "text_muted", "This folder is empty."));
+      }
+
+      for (const id of sorted) {
+        listEl.appendChild(buildPersonaRow(power, id, { inFolder: true }));
+      }
+
+      if (autoScroll) {
+        const active = listEl.querySelector(".pme-persona.is_active");
+        if (active instanceof HTMLElement)
+          active.scrollIntoView({ block: "nearest" });
+        scrollTop = listEl.scrollTop;
+      } else {
+        listEl.scrollTop = preserveScroll;
+        scrollTop = preserveScroll;
+      }
+      return;
+    }
+
+    // --- Root view: folders at top (alphabetical), then unfolded personas ---
+    const foldedIds = new Set(Object.values(folderMap));
+    const unfolded = personas.filter((id) => !foldedIds.has(id));
+    const sortedUnfolded = sortPersonas(unfolded, power, sortMode);
+
+    listEl.innerHTML = "";
+
+    // Update title
+    backBtn.style.display = "none";
+    folderNameInTitle.style.display = "none";
+    titleText.textContent = "Personas ";
+
+    // Folders first
+    for (const folder of folders) {
+      // Only show folders that have at least one valid persona
+      const validCount = folder.personaIds.filter((id) => personas.includes(id)).length;
+      if (validCount === 0 && folder.personaIds.length === 0) continue; // hide empty folders? or show them? show them for now
+      listEl.appendChild(buildFolderRow(power, folder));
+    }
+
+    // Then unfolded personas
+    countEl.textContent = `(${personas.length})`;
+    for (const id of sortedUnfolded) {
+      listEl.appendChild(buildPersonaRow(power, id));
     }
 
     if (autoScroll) {
@@ -372,7 +656,7 @@ export function createPersonaList({ getPowerUser, bus }) {
     if (row instanceof HTMLElement) row.classList.add("is_active");
   }
 
-  // Events
+  // ---- Events ----
   listEl.addEventListener("scroll", () => {
     scrollTop = listEl.scrollTop;
   });
@@ -401,6 +685,8 @@ export function createPersonaList({ getPowerUser, bus }) {
     const target = ev.target instanceof HTMLElement ? ev.target : null;
     const row = target?.closest?.("[data-persona-id]");
     if (!(row instanceof HTMLElement)) return;
+    // Don't switch persona if clicking the folder-add button
+    if (target?.closest?.(".pme-persona-folder-add")) return;
     const id = row.dataset.personaId;
     if (!id) return;
     if (id === user_avatar) return;
@@ -417,6 +703,30 @@ export function createPersonaList({ getPowerUser, bus }) {
     }
   });
 
+  // ---- Bus wiring for folder events ----
+  bus?.on?.(UI_EVENTS.FOLDER_CREATED, () => {
+    void renderList({ autoScroll: false });
+  });
+  bus?.on?.(UI_EVENTS.FOLDER_DELETED, () => {
+    if (currentFolderId) {
+      // Check if current folder still exists
+      const folders = getFolders();
+      if (!folders.find((f) => f.id === currentFolderId)) {
+        currentFolderId = null;
+        backBtn.style.display = "none";
+        folderNameInTitle.style.display = "none";
+        titleText.textContent = "Personas ";
+      }
+    }
+    void renderList({ autoScroll: false });
+  });
+  bus?.on?.(UI_EVENTS.FOLDER_CHANGED, () => {
+    void renderList({ autoScroll: false });
+  });
+  bus?.on?.(UI_EVENTS.PERSONA_FOLDER_CHANGED, () => {
+    void renderList({ autoScroll: false });
+  });
+
   return {
     el: root,
     mount({ autoScroll = false } = {}) {
@@ -430,7 +740,6 @@ export function createPersonaList({ getPowerUser, bus }) {
       scheduleRefresh({ invalidateCache, autoScroll });
     },
     updatePreviewOnly() {
-      // No cache invalidation; just redraw from current power_user data.
       scheduleRefresh({ invalidateCache: false, autoScroll: false });
     },
     destroy() {

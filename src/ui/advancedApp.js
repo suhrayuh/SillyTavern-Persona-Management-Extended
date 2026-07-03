@@ -59,6 +59,20 @@ export function createAdvancedApp(rootEl) {
   bus.on(UI_EVENTS.PERSONA_LIST_INVALIDATED, () => {
     personaList.update({ invalidateCache: true, autoScroll: false });
   });
+  // Folder changes: refresh persona list + current persona panel (folder button state)
+  bus.on(UI_EVENTS.PERSONA_FOLDER_CHANGED, () => {
+    personaList.update({ invalidateCache: false, autoScroll: false });
+    currentPersonaPanel.update();
+  });
+  bus.on(UI_EVENTS.FOLDER_CREATED, () => {
+    personaList.update({ invalidateCache: false, autoScroll: false });
+  });
+  bus.on(UI_EVENTS.FOLDER_DELETED, () => {
+    personaList.update({ invalidateCache: false, autoScroll: false });
+  });
+  bus.on(UI_EVENTS.FOLDER_CHANGED, () => {
+    personaList.update({ invalidateCache: false, autoScroll: false });
+  });
 
   function mountOnce({ autoScroll = false } = {}) {
     if (mounted) return;
