@@ -139,8 +139,9 @@ export function showFolderPicker(anchorEl, personaId, bus) {
   // Copy theme colors from PME root (inside ST's themed area)
   const themedEl = document.getElementById("pme_root") || document.getElementById("PersonaManagement") || document.body;
   const themedStyle = getComputedStyle(themedEl);
-  picker.style.background = themedStyle.getPropertyValue("--SmartThemeBodyColor").trim() || "var(--SmartThemeBodyColor, #1a1a2e)";
-  picker.style.color = themedStyle.getPropertyValue("--SmartThemeFontColor").trim() || "";
+  picker.style.background = themedStyle.backgroundColor || "var(--SmartThemeBodyColor, #1a1a2e)";
+  picker.style.color = themedStyle.color || "";
+  picker.style.borderColor = getComputedStyle(themedEl).getPropertyValue("--SmartThemeBorderColor").trim() || "rgba(255,255,255,0.15)";
 
   document.body.appendChild(picker);
 
