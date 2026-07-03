@@ -10,7 +10,6 @@ import { el } from "./dom.js";
 import { UI_EVENTS } from "../uiBus.js";
 import {
   getFolders,
-  getPersonaFolder,
   getPersonaFolderMap,
   removePersonaFromFolder,
   addPersonaToFolder,

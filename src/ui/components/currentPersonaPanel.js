@@ -11,8 +11,8 @@ import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from "/scripts/popup.js";
 import { el, setHidden } from "./dom.js";
 import { UI_EVENTS } from "../uiBus.js";
 import { getPersonaFolder } from "../../store/folderStore.js";
-import { showFolderPicker, showCreateFolderDialog } from "./folderPicker.js";
-import { removePersonaFromFolder, addPersonaToFolder } from "../../store/folderStore.js";
+import { showFolderPicker } from "./folderPicker.js";
+import { removePersonaFromFolder } from "../../store/folderStore.js";
 import { user_avatar } from "/scripts/personas.js";
 
 function clickNative(id) {
