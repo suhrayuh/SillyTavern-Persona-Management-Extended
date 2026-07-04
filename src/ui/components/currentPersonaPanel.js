@@ -262,6 +262,7 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
   );
 
 
+  header.appendChild(titleEl);
   header.appendChild(buttons);
   root.appendChild(header);
 

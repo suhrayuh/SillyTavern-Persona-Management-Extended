@@ -100,6 +100,18 @@ export function showFolderPicker(anchorEl, personaId, bus) {
   });
   picker.appendChild(createItem);
 
+  // Close button (bottom)
+  picker.appendChild(el("div", "pme-folder-picker-divider"));
+  const closeItem = el("div", "pme-folder-picker-item pme-folder-picker-close");
+  {
+    const icon = document.createElement("i");
+    icon.className = "fa-solid fa-xmark";
+    closeItem.appendChild(icon);
+    closeItem.appendChild(el("span", "pme-folder-picker-label", "Done"));
+  }
+  closeItem.addEventListener("click", () => picker.remove());
+  picker.appendChild(closeItem);
+
   // Position near anchor
   const rect = anchorEl.getBoundingClientRect();
   picker.style.position = "fixed";
