@@ -14,6 +14,7 @@ import {
   togglePersonaInFolder,
   createFolder,
   renameFolder,
+  updateFolderDescription,
   deleteFolder,
   addPersonaToFolder,
 } from "../../store/folderStore.js";
@@ -214,32 +215,51 @@ export async function showCreateFolderDialog(bus) {
  * @param {{emit: Function}} bus
  * @returns {Promise<string|null>}
  */
-export async function showRenameFolderDialog(folderId, currentName, bus) {
-  const content = el("div", "");
-  content.appendChild(el("div", "", "Rename folder:"));
+export async function showRenameFolderDialog(folderId, currentName, currentDescription, bus) {
+  const content = el("div", "pme-create-folder-dialog");
+  content.appendChild(
+    el("div", "pme-create-folder-hint", "Edit folder.")
+  );
 
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "text_pole";
-  input.value = currentName;
-  input.autocomplete = "off";
+  const nameLabel = el("label", "pme-create-folder-label", "Folder Name");
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "text_pole";
+  nameInput.value = currentName;
+  nameInput.autocomplete = "off";
 
-  content.appendChild(input);
+  const descLabel = el(
+    "label",
+    "pme-create-folder-label",
+    "Description (optional)"
+  );
+  const descInput = document.createElement("textarea");
+  descInput.className = "text_pole";
+  descInput.rows = 3;
+  descInput.placeholder = "A short description of this folder...";
+  descInput.value = currentDescription || "";
+
+  content.appendChild(nameLabel);
+  content.appendChild(nameInput);
+  content.appendChild(descLabel);
+  content.appendChild(descInput);
+
   setTimeout(() => {
-    input.focus();
-    input.select();
+    nameInput.focus();
+    nameInput.select();
   }, 100);
 
   const result = await callGenericPopup(content, POPUP_TYPE.CONFIRM, "", {
-    okButton: "Rename",
+    okButton: "Save",
     cancelButton: "Cancel",
     wide: true,
   });
 
   if (result === POPUP_RESULT.AFFIRMATIVE) {
-    renameFolder(folderId, input.value);
+    renameFolder(folderId, nameInput.value);
+    updateFolderDescription(folderId, descInput.value);
     bus?.emit?.(UI_EVENTS.FOLDER_CHANGED, { folderId });
-    return input.value;
+    return nameInput.value;
   }
   return null;
 }

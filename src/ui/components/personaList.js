@@ -366,7 +366,7 @@ export function createPersonaList({ getPowerUser, bus }) {
     renameBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>';
     renameBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
-      const newName = await showRenameFolderDialog(folder.id, folder.name, bus);
+      const newName = await showRenameFolderDialog(folder.id, folder.name, folder.description, bus);
       if (newName) void renderList({ autoScroll: false });
     });
     folderActions.appendChild(renameBtn);
