@@ -108,20 +108,32 @@ export function showFolderPicker(anchorEl, personaId, bus) {
     const icon = document.createElement("i");
     icon.className = "fa-solid fa-xmark";
     closeItem.appendChild(icon);
-    closeItem.appendChild(el("span", "pme-folder-picker-label", "Done"));
+    closeItem.appendChild(el("span", "pme-folder-picker-label", "Close"));
   }
   closeItem.addEventListener("click", () => picker.remove());
   picker.appendChild(closeItem);
 
-  // Position near anchor
+  // Position near anchor — flip up if not enough room below
   const rect = anchorEl.getBoundingClientRect();
   picker.style.position = "fixed";
   picker.style.zIndex = "100000";
-  picker.style.top = `${rect.bottom + 4}px`;
+  picker.style.visibility = "hidden"; // hide until positioned
   const pickerWidth = 240;
   let left = rect.right - pickerWidth;
   if (left < 8) left = 8;
   picker.style.left = `${left}px`;
+
+  // Temporarily append to measure height, then position
+  document.body.appendChild(picker);
+  const pickerHeight = picker.offsetHeight;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  if (spaceBelow < pickerHeight + 10 && rect.top > pickerHeight + 10) {
+    // Flip up: position above the anchor
+    picker.style.top = `${rect.top - pickerHeight - 4}px`;
+  } else {
+    picker.style.top = `${rect.bottom + 4}px`;
+  }
+  picker.style.visibility = "";
 
   // Copy theme colors from PME root (inside ST's themed area)
   const themedEl = document.getElementById("pme_root") || document.getElementById("PersonaManagement") || document.body;
@@ -129,8 +141,6 @@ export function showFolderPicker(anchorEl, personaId, bus) {
   picker.style.background = themedStyle.backgroundColor || "var(--SmartThemeBodyColor, #1a1a2e)";
   picker.style.color = themedStyle.color || "";
   picker.style.borderColor = getComputedStyle(themedEl).getPropertyValue("--SmartThemeBorderColor").trim() || "rgba(255,255,255,0.15)";
-
-  document.body.appendChild(picker);
 
   // Prevent clicks inside picker from closing ST's drawer
   picker.addEventListener("mousedown", (e) => {
