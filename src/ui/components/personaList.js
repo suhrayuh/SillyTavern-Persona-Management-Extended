@@ -11,7 +11,6 @@ import { UI_EVENTS } from "../uiBus.js";
 import {
   getFolders,
   getPersonaFolderMap,
-  removePersonaFromFolder,
   addPersonaToFolder,
 } from "../../store/folderStore.js";
 import {
@@ -327,22 +326,29 @@ export function createPersonaList({ getPowerUser, bus }) {
     row.dataset.folderId = folder.id;
     row.draggable = true;
 
-    // 2x2 avatar grid
+    // 2x2 avatar grid (or folder icon if empty)
     const avatarGrid = el("div", "pme-folder-avatar-grid");
     const preview = folder.personaIds.slice(0, 4);
-    for (let i = 0; i < 4; i++) {
-      const slot = el("div", "pme-folder-avatar-slot");
-      if (preview[i]) {
-        const img = document.createElement("img");
-        img.className = "pme-folder-avatar-mini";
-        img.alt = "";
-        img.loading = "lazy";
-        img.src = getThumbnailUrl("persona", preview[i]);
-        slot.appendChild(img);
-      } else {
-        slot.classList.add("pme-folder-avatar-empty");
+    if (preview.length === 0) {
+      // Show a single folder icon centered
+      const emptyIcon = document.createElement("i");
+      emptyIcon.className = "fa-solid fa-folder pme-folder-avatar-empty-icon";
+      avatarGrid.appendChild(emptyIcon);
+    } else {
+      for (let i = 0; i < 4; i++) {
+        const slot = el("div", "pme-folder-avatar-slot");
+        if (preview[i]) {
+          const img = document.createElement("img");
+          img.className = "pme-folder-avatar-mini";
+          img.alt = "";
+          img.loading = "lazy";
+          img.src = getThumbnailUrl("persona", preview[i]);
+          slot.appendChild(img);
+        } else {
+          slot.classList.add("pme-folder-avatar-empty");
+        }
+        avatarGrid.appendChild(slot);
       }
-      avatarGrid.appendChild(slot);
     }
     row.appendChild(avatarGrid);
 
@@ -464,33 +470,24 @@ export function createPersonaList({ getPowerUser, bus }) {
     row.appendChild(img);
     row.appendChild(meta);
 
-    // Hover folder-add icon (top-right corner of row)
+    // Hover folder icon (top-right corner of row) — always opens picker
     const folderAddBtn = document.createElement("button");
     folderAddBtn.type = "button";
     folderAddBtn.className = "menu_button menu_button_icon pme-icon-btn pme-persona-folder-add";
-    if (inFolder) {
-      folderAddBtn.title = "Remove from folder";
-      folderAddBtn.innerHTML = '<i class="fa-solid fa-folder-minus"></i>';
-      folderAddBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        removePersonaFromFolder(id);
-        bus?.emit?.(UI_EVENTS.PERSONA_FOLDER_CHANGED, { personaId: id, folderId: null });
-        void renderList({ autoScroll: false });
-      });
-    } else {
-      folderAddBtn.title = "Add to folder";
-      folderAddBtn.innerHTML = '<i class="fa-solid fa-folder-plus"></i>';
-      folderAddBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        showFolderPicker(folderAddBtn, id, bus);
-        // Render is handled by bus event via advancedApp
-      });
-    }
+    folderAddBtn.title = "Manage folders";
+    folderAddBtn.innerHTML = '<i class="fa-solid fa-folder"></i>';
+    folderAddBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showFolderPicker(folderAddBtn, id, bus);
+      // Render is handled by bus event via advancedApp
+    });
     row.appendChild(folderAddBtn);
 
-    // Drag persona
+    // Drag persona — use custom type so ST doesn't interpret as image drop
     row.addEventListener("dragstart", (e) => {
       e.dataTransfer?.setData("text/pme-persona-id", id);
+      // Prevent ST's dropzone from treating this as an imported image
+      try { e.dataTransfer.effectAllowed = "move"; } catch {}
       row.classList.add("pme-persona-dragging");
     });
     row.addEventListener("dragend", () => {

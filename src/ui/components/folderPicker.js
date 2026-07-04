@@ -1,24 +1,27 @@
 /**
  * Folder picker dropdown + create/rename/delete dialogs.
  * Shared between personaList (hover icon) and currentPersonaPanel (button).
+ *
+ * Multi-folder: a persona can be in multiple folders.
+ * The picker uses checkboxes to toggle membership.
  */
 
 import { el } from "./dom.js";
 import { UI_EVENTS } from "../uiBus.js";
 import {
   getFolders,
-  getPersonaFolder,
+  isPersonaInFolder,
+  togglePersonaInFolder,
   createFolder,
   renameFolder,
   deleteFolder,
   addPersonaToFolder,
-  removePersonaFromFolder,
 } from "../../store/folderStore.js";
 import { callGenericPopup, POPUP_TYPE, POPUP_RESULT } from "/scripts/popup.js";
 
 /**
  * Show a floating folder picker dropdown near an anchor element.
- * Handles add/remove/move operations internally and emits bus events.
+ * Uses checkboxes for multi-select toggle.
  * @param {HTMLElement} anchorEl
  * @param {string} personaId
  * @param {{emit: Function}} bus
@@ -30,40 +33,40 @@ export function showFolderPicker(anchorEl, personaId, bus) {
     .forEach((n) => n.remove());
 
   const picker = el("div", "pme-folder-picker");
-  const currentFolder = getPersonaFolder(personaId);
   const folders = [...getFolders()].sort((a, b) =>
     a.name.localeCompare(b.name)
   );
 
   if (folders.length > 0) {
     for (const f of folders) {
+      const isIn = isPersonaInFolder(f.id, personaId);
       const item = el("div", "pme-folder-picker-item");
-      if (currentFolder?.id === f.id) item.classList.add("is-current");
+      if (isIn) item.classList.add("is-checked");
+
+      // Checkbox icon
+      const checkIcon = document.createElement("i");
+      checkIcon.className = `fa-solid ${isIn ? "fa-square-check" : "fa-square"} pme-folder-picker-check`;
+      item.appendChild(checkIcon);
 
       const folderIcon = document.createElement("i");
       folderIcon.className = "fa-solid fa-folder";
       item.appendChild(folderIcon);
+
       item.appendChild(el("span", "pme-folder-picker-label", f.name));
 
-      if (currentFolder?.id === f.id) {
-        const check = document.createElement("i");
-        check.className =
-          "fa-solid fa-check pme-folder-picker-check";
-        item.appendChild(check);
-      }
-
       item.addEventListener("click", () => {
-        if (currentFolder?.id === f.id) {
-          // Already in this folder — close
-          picker.remove();
-          return;
+        const nowIn = togglePersonaInFolder(f.id, personaId);
+        // Update visual state
+        const check = item.querySelector(".pme-folder-picker-check");
+        if (check) {
+          check.className = `fa-solid ${nowIn ? "fa-square-check" : "fa-square"} pme-folder-picker-check`;
         }
-        addPersonaToFolder(f.id, personaId);
+        item.classList.toggle("is-checked", nowIn);
         bus?.emit?.(UI_EVENTS.PERSONA_FOLDER_CHANGED, {
           personaId,
           folderId: f.id,
+          nowIn,
         });
-        picker.remove();
       });
       picker.appendChild(item);
     }
@@ -91,40 +94,11 @@ export function showFolderPicker(anchorEl, personaId, bus) {
       bus?.emit?.(UI_EVENTS.PERSONA_FOLDER_CHANGED, {
         personaId,
         folderId: folder.id,
+        nowIn: true,
       });
     }
   });
   picker.appendChild(createItem);
-
-  // Remove from folder option (if currently in a folder)
-  if (currentFolder) {
-    picker.appendChild(el("div", "pme-folder-picker-divider"));
-    const removeItem = el(
-      "div",
-      "pme-folder-picker-item pme-folder-picker-remove"
-    );
-    {
-      const icon = document.createElement("i");
-      icon.className = "fa-solid fa-folder-minus";
-      removeItem.appendChild(icon);
-      removeItem.appendChild(
-        el(
-          "span",
-          "pme-folder-picker-label",
-          `Remove from "${currentFolder.name}"`
-        )
-      );
-    }
-    removeItem.addEventListener("click", () => {
-      removePersonaFromFolder(personaId);
-      bus?.emit?.(UI_EVENTS.PERSONA_FOLDER_CHANGED, {
-        personaId,
-        folderId: null,
-      });
-      picker.remove();
-    });
-    picker.appendChild(removeItem);
-  }
 
   // Position near anchor
   const rect = anchorEl.getBoundingClientRect();

@@ -1027,6 +1027,7 @@
   border-radius: 50%;
   overflow: hidden;
   background: rgba(128, 128, 128, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.12);
 }
 
 .pme-folder-avatar-slot {
@@ -1043,7 +1044,17 @@
 }
 
 .pme-folder-avatar-empty {
-  /* empty slot — no avatar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pme-folder-avatar-empty::before {
+  content: "\f007"; /* fa-user-slash */
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 0.6em;
+  opacity: 0.3;
 }
 
 /* Folder meta */
@@ -1080,11 +1091,11 @@
 
 .pme-folder-rename-btn,
 .pme-folder-delete-btn {
-  height: 20px;
-  width: 20px;
-  min-width: 20px;
-  min-height: 20px;
-  font-size: 0.75em;
+  height: 28px;
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  font-size: 0.95em;
 }
 
 .pme-folder-delete-btn {
@@ -1182,8 +1193,24 @@
 }
 
 .pme-folder-picker-check {
-  opacity: 0.7;
+  opacity: 0.9;
   font-size: 0.85em;
+  color: var(--SmartThemeQuoteColor, #5aa);
+}
+
+.pme-folder-picker-checkbox {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  opacity: 0.9;
+}
+
+.pme-folder-picker-checkbox.checked {
+  color: var(--SmartThemeQuoteColor, #5aa);
+}
+
+.pme-folder-picker-checkbox.unchecked {
+  opacity: 0.4;
 }
 
 .pme-folder-picker-create {

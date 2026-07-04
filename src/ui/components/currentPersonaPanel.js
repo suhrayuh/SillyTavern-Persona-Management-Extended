@@ -10,9 +10,7 @@ import { callGenericPopup, POPUP_RESULT, POPUP_TYPE } from "/scripts/popup.js";
 
 import { el, setHidden } from "./dom.js";
 import { UI_EVENTS } from "../uiBus.js";
-import { getPersonaFolder } from "../../store/folderStore.js";
 import { showFolderPicker } from "./folderPicker.js";
-import { removePersonaFromFolder } from "../../store/folderStore.js";
 import { user_avatar } from "/scripts/personas.js";
 
 function clickNative(id) {
@@ -241,29 +239,12 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
       );
     })
   );
-  // Folder button: add-to-folder or remove-from-folder depending on current state
-  const folderBtn = makeIconButton(
-    "Add to folder",
-    "fa-folder-plus",
-    (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const currentFolder = getPersonaFolder(user_avatar);
-      if (currentFolder) {
-        // Currently in a folder — remove
-        removePersonaFromFolder(user_avatar);
-        bus?.emit(UI_EVENTS.PERSONA_FOLDER_CHANGED, {
-          personaId: user_avatar,
-          folderId: null,
-        });
-        bus?.emit(UI_EVENTS.PERSONA_LIST_INVALIDATED, {});
-        syncFolderButtonState();
-      } else {
-        // Not in a folder — show picker (render + button state handled by bus event via advancedApp)
-        showFolderPicker(folderBtn, user_avatar, bus);
-      }
-    }
-  );
+  // Folder button: always opens picker (multi-select checkboxes)
+  const folderBtn = makeIconButton("Folders", "fa-folder", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    showFolderPicker(folderBtn, user_avatar, bus);
+  });
   buttons.appendChild(folderBtn);
   buttons.appendChild(
     makeIconButton(
@@ -280,21 +261,7 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
     )
   );
 
-  function syncFolderButtonState() {
-    const currentFolder = getPersonaFolder(user_avatar);
-    const icon = folderBtn.querySelector("i");
-    if (currentFolder) {
-      folderBtn.title = `Remove from "${currentFolder.name}"`;
-      if (icon) icon.className = "fa-solid fa-folder-minus";
-      folderBtn.classList.add("world_set");
-    } else {
-      folderBtn.title = "Add to folder";
-      if (icon) icon.className = "fa-solid fa-folder-plus";
-      folderBtn.classList.remove("world_set");
-    }
-  }
 
-  header.appendChild(titleEl);
   header.appendChild(buttons);
   root.appendChild(header);
 
@@ -500,7 +467,6 @@ export function createCurrentPersonaPanel({ getPersonaName, bus }) {
       ensurePme(d);
       const linked = isLinked();
       syncLinkButtonState();
-      syncFolderButtonState();
 
       // Update inputs from selected source (native or local)
       textarea.value = linked

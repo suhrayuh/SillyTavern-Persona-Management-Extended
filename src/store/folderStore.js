@@ -4,6 +4,8 @@
  * Folders are a GLOBAL concept (not per-persona). They organize personas
  * into groups for display in the persona list. Stored in extension_settings
  * so they sync with ST settings.
+ *
+ * A persona can be in MULTIPLE folders.
  */
 
 import { saveSettingsDebounced } from "/script.js";
@@ -116,8 +118,8 @@ export function updateFolderDescription(folderId, description) {
 }
 
 /**
- * Add a persona to a folder. If the persona is already in another folder,
- * it is removed from the old one first (a persona can only be in one folder).
+ * Add a persona to a folder. Personas can be in multiple folders.
+ * Does NOT remove from other folders.
  * @param {string} folderId
  * @param {string} personaId
  * @returns {PersonaFolder|null}
@@ -126,13 +128,6 @@ export function addPersonaToFolder(folderId, personaId) {
   const folders = getFolders();
   const target = folders.find((f) => f.id === folderId);
   if (!target) return null;
-
-  // Remove from any existing folder first
-  for (const f of folders) {
-    if (f.id === folderId) continue;
-    const idx = f.personaIds.indexOf(personaId);
-    if (idx !== -1) f.personaIds.splice(idx, 1);
-  }
 
   // Don't add duplicates
   if (!target.personaIds.includes(personaId)) {
@@ -144,47 +139,76 @@ export function addPersonaToFolder(folderId, personaId) {
 }
 
 /**
- * Remove a persona from its folder (if any).
+ * Remove a persona from a specific folder.
+ * @param {string} folderId
  * @param {string} personaId
  */
-export function removePersonaFromFolder(personaId) {
+export function removePersonaFromFolder(folderId, personaId) {
   const folders = getFolders();
-  let changed = false;
-  for (const f of folders) {
-    const idx = f.personaIds.indexOf(personaId);
-    if (idx !== -1) {
-      f.personaIds.splice(idx, 1);
-      changed = true;
-      break;
-    }
+  const f = folders.find((x) => x.id === folderId);
+  if (!f) return;
+  const idx = f.personaIds.indexOf(personaId);
+  if (idx !== -1) {
+    f.personaIds.splice(idx, 1);
+    scheduleSave();
   }
-  if (changed) scheduleSave();
 }
 
 /**
- * Get the folder a persona belongs to (if any).
+ * Toggle a persona's membership in a folder.
+ * @param {string} folderId
  * @param {string} personaId
- * @returns {PersonaFolder|null}
+ * @returns {boolean} true if now in folder, false if removed
  */
-export function getPersonaFolder(personaId) {
+export function togglePersonaInFolder(folderId, personaId) {
   const folders = getFolders();
-  for (const f of folders) {
-    if (f.personaIds.includes(personaId)) return f;
+  const f = folders.find((x) => x.id === folderId);
+  if (!f) return false;
+  const idx = f.personaIds.indexOf(personaId);
+  if (idx !== -1) {
+    f.personaIds.splice(idx, 1);
+    scheduleSave();
+    return false;
   }
-  return null;
+  f.personaIds.push(personaId);
+  scheduleSave();
+  return true;
 }
 
 /**
- * Returns a map of personaId → folderId for quick lookup.
- * @returns {Record<string, string>}
+ * Get all folders a persona belongs to (can be multiple).
+ * @param {string} personaId
+ * @returns {PersonaFolder[]}
+ */
+export function getPersonaFolders(personaId) {
+  const folders = getFolders();
+  return folders.filter((f) => f.personaIds.includes(personaId));
+}
+
+/**
+ * Check if a persona is in a specific folder.
+ * @param {string} folderId
+ * @param {string} personaId
+ * @returns {boolean}
+ */
+export function isPersonaInFolder(folderId, personaId) {
+  const folders = getFolders();
+  const f = folders.find((x) => x.id === folderId);
+  return f ? f.personaIds.includes(personaId) : false;
+}
+
+/**
+ * Returns a map of personaId → folderId[] for quick lookup.
+ * A persona can map to multiple folder IDs.
+ * @returns {Record<string, string[]>}
  */
 export function getPersonaFolderMap() {
   const folders = getFolders();
-  /** @type {Record<string, string>} */
+  /** @type {Record<string, string[]>} */
   const map = {};
   for (const f of folders) {
     for (const pid of f.personaIds) {
-      map[pid] = f.id;
+      (map[pid] ??= []).push(f.id);
     }
   }
   return map;
